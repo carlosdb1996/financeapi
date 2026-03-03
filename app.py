@@ -8,9 +8,10 @@ load_dotenv()
 
 app = Flask(__name__)
 yahoo_finance_key = os.getenv("API_KEY_YHFINANCE")
+number_api = os.getenv("NUMBER_API")
 
 RAPIDAPI_HOST = "yh-finance.p.rapidapi.com"
-RAPIDAPI_KEY = yahoo_finance_key  # ideal: env var
+RAPIDAPI_KEY = yahoo_finance_key 
 
 SYMBOLS = [
     # Acciones
