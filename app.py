@@ -1,35 +1,33 @@
 import http.client
 import json
-import os 
+import os
 from flask import Flask, jsonify
 from dotenv import load_dotenv
+
+# ✅ AÑADIDO
+from flask_cors import CORS
+
 load_dotenv()
 
-
 app = Flask(__name__)
+
+# ✅ AÑADIDO: permite peticiones desde Angular (4200) solo en /api/*
+CORS(app, resources={r"/api/*": {"origins": ["http://localhost:4200"]}})
+
 yahoo_finance_key = os.getenv("API_KEY_YHFINANCE")
 number_api = os.getenv("NUMBER_API")
 
 RAPIDAPI_HOST = "yh-finance.p.rapidapi.com"
-RAPIDAPI_KEY = yahoo_finance_key 
+RAPIDAPI_KEY = yahoo_finance_key
 
 SYMBOLS = [
-    # Acciones
     "AMD", "IBM", "AAPL", "MSFT", "GOOGL",
-
-    # ETFs (iniciales)
     "SPY", "QQQ", "VTI", "IVV", "IWM",
-
-    # Fondos (iniciales)
     "VTSAX", "VFIAX", "VWELX", "FBGRX", "SWPPX",
-
-    # ➕ ETFs añadidos (20)
     "DIA", "VOO", "SCHX", "ARKK", "XLK",
     "XLF", "XLE", "XLV", "EFA", "EEM",
     "VEA", "VWO", "TLT", "IEF", "LQD",
     "HYG", "GLD", "SLV", "VNQ", "BND",
-
-    # ➕ Fondos añadidos (20)
     "FXAIX", "FSMAX", "FZROX", "FZILX", "SWTSX",
     "SWISX", "SWAGX", "VBTLX", "VTIAX", "VGTSX",
     "VIGAX", "VIMAX", "VSMAX", "PRGFX", "TRBCX",
@@ -37,7 +35,6 @@ SYMBOLS = [
 ]
 REGION = "US"
 
-# ✅ caches en memoria
 prices_cache_all = []
 prices_cache_stocks = []
 prices_cache_etfs = []
@@ -94,18 +91,15 @@ def load_prices_on_startup():
                 "name": q.get("shortName") or q.get("longName") or q.get("symbol"),
                 "price": q.get("regularMarketPrice"),
                 "currency": q.get("currency"),
-                "type": q.get("quoteType"),  
+                "type": q.get("quoteType"),
             })
 
-        # Mantener el orden de SYMBOLS
         order = {s: i for i, s in enumerate(SYMBOLS)}
         extracted.sort(key=lambda x: order.get(x.get("symbol"), 9999))
 
-        # ✅ Clasificación correcta
         assets_stocks, assets_etfs, assets_funds, assets_others = [], [], [], []
         for asset in extracted:
             t = asset.get("type")
-
             if t == "EQUITY":
                 assets_stocks.append(asset)
             elif t == "ETF":
@@ -115,20 +109,17 @@ def load_prices_on_startup():
             else:
                 assets_others.append(asset)
 
-        # ✅ Guardar en caches para endpoints
         prices_cache_all = extracted
         prices_cache_stocks = assets_stocks
         prices_cache_etfs = assets_etfs
         prices_cache_funds = assets_funds
         prices_cache_others = assets_others
 
-        # ✅ Comprobación / log útil
         print(f"✅ TOTAL: {len(prices_cache_all)}")
         print(f"   ACCIONES (EQUITY): {len(prices_cache_stocks)}")
         print(f"   ETFs: {len(prices_cache_etfs)}")
         print(f"   FONDOS (MUTUALFUND): {len(prices_cache_funds)}")
 
-        # Si quieres ver qué cayó en "otros"
         if prices_cache_others:
             print("   Otros types:", sorted({a.get("type") for a in prices_cache_others}))
 
@@ -140,10 +131,8 @@ def load_prices_on_startup():
         prices_cache_funds = []
         prices_cache_others = []
 
-# ✅ Se ejecuta UNA vez al arrancar
 load_prices_on_startup()
 
-# --- Endpoints ---
 @app.route("/api/moneymate/assets", methods=["GET"])
 def assets_all():
     return jsonify(prices_cache_all)
@@ -159,7 +148,6 @@ def assets_etfs():
 @app.route("/api/moneymate/funds", methods=["GET"])
 def assets_funds():
     return jsonify(prices_cache_funds)
-
 
 if __name__ == "__main__":
     print("🚀 Arrancando Flask...")
